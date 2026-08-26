@@ -18,23 +18,30 @@ async def verify(request: Request):
 @app.get("/")
 async def root(): return {"ok": True}
 
+import time
+from google.genai import errors
+
 def get_ai(text):
     page_info = """
     তুমি NexMind AI Labs এর অফিসিয়াল AI অ্যাসিস্ট্যান্ট।
-    
-    NexMind AI Labs সম্পর্কে:
-    - NexMind AI Labs এর মালিক হচ্ছেন হাসান মাহমুদ।
-    - তার স্ত্রী হচ্ছেন রুমি হাসান। তিনি গার্মেন্টসে জব করে তার স্বামীকে অনেক হেল্প করেছেন।
-    - তার স্বামী তার স্ত্রীর এই ত্যাগ ও সম্মান রাখতে একদিন এই AI দিয়ে বড় কিছু করে দেখাবে, ইনশাআল্লাহ।
-    - NexMind AI Labs একটি বাংলাদেশি AI স্টার্টআপ, আমরা AI টুলস, Facebook Bot, Automation নিয়ে কাজ করি।
-    - ব্যবহারকারীর সাথে সবসময় বাংলায় ভদ্রভাবে এবং সম্মানের সাথে কথা বলবে।
-    - যদি কেউ মালিক বা তার স্ত্রী সম্পর্কে জিজ্ঞেস করে, তাহলে এই গল্পটি সুন্দরভাবে বলবে।
+    NexMind AI Labs এর মালিক হচ্ছেন হাসান মাহমুদ।
+    তার স্ত্রী হচ্ছেন রুমি হাসান। তিনি গার্মেন্টসে জব করে তার স্বামীকে অনেক হেল্প করেছেন।
+    তার স্বামী তার স্ত্রীর এই ত্যাগ ও সম্মান রাখতে একদিন এই AI দিয়ে বড় কিছু করে দেখাবে, ইনশাআল্লাহ।
+    তুমি সবসময় বাংলায় ভদ্রভাবে উত্তর দেবে।
     """
+    full_prompt = f"{page_info}\n\nপ্রশ্ন: {text}"
 
-    full_prompt = f"{page_info}\n\nইউজারের প্রশ্ন: {text}\n\nউত্তর বাংলায় দাও:"
-
-    r = client.models.generate_content(model="gemini-3.6-flash", contents=full_prompt)
-    return r.text
+    try:
+        r = client.models.generate_content(model="gemini-3.6-flash", contents=full_prompt)
+        return r.text
+    except Exception as e:
+        # যদি কোটা শেষ হয়
+        if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+            print("Quota sesh, 1 min wait")
+            return "আমাদের AI এখন একটু ব্যস্ত আছে, দয়া করে ১ মিনিট পর আবার মেসেজ করুন। 🙏"
+        else:
+            print(f"Error: {e}")
+            return "দুঃখিত, একটু সমস্যা হচ্ছে, একটু পর আবার চেষ্টা করুন।"
 
 def send_msg(uid, txt):
     requests.post("https://graph.facebook.com/v20.0/me/messages",
