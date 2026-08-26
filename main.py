@@ -13,7 +13,8 @@ GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-@app.get("/")
+# Facebook Verify এর জন্য
+@app.get("/webhook")
 async def verify(request: Request):
     mode = request.query_params.get("hub.mode")
     token = request.query_params.get("hub.verify_token")
@@ -22,6 +23,11 @@ async def verify(request: Request):
         if token != VERIFY_TOKEN:
             return PlainTextResponse("Verification token mismatch", status_code=403)
         return PlainTextResponse(content=challenge)
+    return PlainTextResponse("Bot is running")
+
+# Check করার জন্য root
+@app.get("/")
+async def root():
     return {"status": "Bot is running - FastAPI"}
 
 def get_gemini_response(user_message):
@@ -29,16 +35,17 @@ def get_gemini_response(user_message):
         response = model.generate_content(user_message)
         return response.text[:1900]
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Gemini Error: {e}")
         return "দুঃখিত, এখন উত্তর দিতে পারছি না।"
 
 def send_message(recipient_id, message_text):
     url = "https://graph.facebook.com/v20.0/me/messages"
     params = {"access_token": PAGE_ACCESS_TOKEN}
     payload = {"recipient": {"id": recipient_id}, "message": {"text": message_text}}
-    requests.post(url, params=params, json=payload)
+    r = requests.post(url, params=params, json=payload)
+    print(f"Send status: {r.status_code}")
 
-@app.post("/")
+@app.post("/webhook")
 async def webhook(request: Request):
     data = await request.json()
     if data.get("object") == "page":
