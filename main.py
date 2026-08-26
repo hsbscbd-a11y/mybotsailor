@@ -1,56 +1,47 @@
-import os
-import requests
+import os, requests
 from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse
 from google import genai
 
 app = FastAPI()
-
 PAGE_ACCESS_TOKEN = os.environ.get('PAGE_ACCESS_TOKEN')
 VERIFY_TOKEN = os.environ.get('VERIFY_TOKEN')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
-
 client = genai.Client(api_key=GEMINI_API_KEY)
 
 @app.get("/webhook")
 async def verify(request: Request):
-    mode = request.query_params.get("hub.mode")
-    token = request.query_params.get("hub.verify_token")
-    challenge = request.query_params.get("hub.challenge")
-    if mode == "subscribe" and token == VERIFY_TOKEN:
-        return PlainTextResponse(content=challenge)
-    return PlainTextResponse("Bot running")
+    if request.query_params.get("hub.mode") == "subscribe" and request.query_params.get("hub.verify_token") == VERIFY_TOKEN:
+        return PlainTextResponse(content=request.query_params.get("hub.challenge"))
+    return PlainTextResponse("ok")
 
 @app.get("/")
-async def root():
-    return {"ok": True}
+async def root(): return {"ok": True}
 
 def get_ai(text):
-    resp = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=text
-    )
-    return resp.text
+    # একটার পর একটা ট্রাই করবে, যেটা কাজ করে সেটা নেবে
+    for model_name in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-1.5-flash"]:
+        try:
+            resp = client.models.generate_content(model=model_name, contents=text)
+            print(f"SUCCESS with {model_name}")
+            return resp.text
+        except Exception as e:
+            print(f"FAILED {model_name}: {e}")
+            continue
+    return "AI Key বা Model এ সমস্যা হচ্ছে, Log দেখুন।"
 
-def send_msg(user_id, text):
-    url = "https://graph.facebook.com/v20.0/me/messages"
-    params = {"access_token": PAGE_ACCESS_TOKEN}
-    data = {"recipient": {"id": user_id}, "message": {"text": text[:1900]}}
-    requests.post(url, params=params, json=data)
+def send_msg(uid, txt):
+    requests.post("https://graph.facebook.com/v20.0/me/messages",
+        params={"access_token": PAGE_ACCESS_TOKEN},
+        json={"recipient": {"id": uid}, "message": {"text": txt[:1900]}})
 
 @app.post("/webhook")
 async def webhook(request: Request):
     body = await request.json()
     if body.get("object") == "page":
         for entry in body.get("entry", []):
-            for event in entry.get("messaging", []):
-                if "message" in event and event["message"].get("text"):
-                    user_text = event["message"]["text"]
-                    sender = event["sender"]["id"]
-                    try:
-                        ai_text = get_ai(user_text)
-                    except Exception as e:
-                        print(f"GEMINI ERROR: {e}")
-                        ai_text = "AI একটু ব্যস্ত, ১ মিনিট পর আবার বলুন।"
-                    send_msg(sender, ai_text)
+            for ev in entry.get("messaging", []):
+                if "message" in ev and ev["message"].get("text"):
+                    reply = get_ai(ev["message"]["text"])
+                    send_msg(ev["sender"]["id"], reply)
     return {"status": "ok"}
