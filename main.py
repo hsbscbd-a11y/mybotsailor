@@ -19,16 +19,14 @@ async def verify(request: Request):
 async def root(): return {"ok": True}
 
 def get_ai(text):
-    # একটার পর একটা ট্রাই করবে, যেটা কাজ করে সেটা নেবে
-    for model_name in ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-1.5-flash"]:
+    for name in ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-flash-latest"]:
         try:
-            resp = client.models.generate_content(model=model_name, contents=text)
-            print(f"SUCCESS with {model_name}")
-            return resp.text
+            r = client.models.generate_content(model=name, contents=text)
+            print(f"SUCCESS with {name}")
+            return r.text
         except Exception as e:
-            print(f"FAILED {model_name}: {e}")
-            continue
-    return "AI Key বা Model এ সমস্যা হচ্ছে, Log দেখুন।"
+            print(f"FAILED {name}: {e}")
+    raise Exception("All models failed")
 
 def send_msg(uid, txt):
     requests.post("https://graph.facebook.com/v20.0/me/messages",
@@ -42,6 +40,10 @@ async def webhook(request: Request):
         for entry in body.get("entry", []):
             for ev in entry.get("messaging", []):
                 if "message" in ev and ev["message"].get("text"):
-                    reply = get_ai(ev["message"]["text"])
+                    try:
+                        reply = get_ai(ev["message"]["text"])
+                    except Exception as e:
+                        reply = f"Error: {e} - Render Logs দেখুন"
+                        print(reply)
                     send_msg(ev["sender"]["id"], reply)
     return {"status": "ok"}
