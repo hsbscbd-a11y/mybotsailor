@@ -19,14 +19,21 @@ async def verify(request: Request):
 async def root(): return {"ok": True}
 
 def get_ai(text):
-    for name in ["gemini-3.6-flash"]:
-        try:
-            r = client.models.generate_content(model=name, contents=text)
-            print(f"SUCCESS with {name}")
-            return r.text
-        except Exception as e:
-            print(f"FAILED {name}: {e}")
-    raise Exception("All models failed")
+    page_info = """
+    তুমি NexMind AI Labs এর অফিসিয়াল AI অ্যাসিস্ট্যান্ট।
+    NexMind AI Labs কি?
+    - এটি একটি বাংলাদেশি AI স্টার্টআপ
+    - আমরা AI টুলস, Facebook Bot, Automation নিয়ে কাজ করি
+    - আমাদের সার্ভিস: AI Chatbot বানানো, পেজ অটোমেশন, AI ভিডিও
+    - যোগাযোগ: Facebook পেজে মেসেজ করুন
+    - ব্যবহারকারীর সাথে সবসময় বাংলায় সুন্দরভাবে কথা বলবে
+    """
+
+    full_prompt = f"{page_info}\n\nইউজারের প্রশ্ন: {text}\n\nউত্তর বাংলায় দাও:"
+
+    r = client.models.generate_content(model="gemini-3.6-flash", contents=full_prompt)
+    print("SUCCESS with gemini-3.6-flash")
+    return r.text
 
 def send_msg(uid, txt):
     requests.post("https://graph.facebook.com/v20.0/me/messages",
