@@ -19,7 +19,7 @@ async def verify(request: Request):
 async def root(): return {"ok": True}
 
 def get_ai(text):
-    for name in ["gemini-3.6-flash", "gemini-2.5-flash", "gemini-flash-latest"]:
+    for name in ["gemini-3.6-flash"]:
         try:
             r = client.models.generate_content(model=name, contents=text)
             print(f"SUCCESS with {name}")
