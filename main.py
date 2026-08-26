@@ -27,21 +27,23 @@ def get_ai(text):
     NexMind AI Labs এর মালিক হচ্ছেন হাসান মাহমুদ।
     তার স্ত্রী হচ্ছেন রুমি হাসান। তিনি গার্মেন্টসে জব করে তার স্বামীকে অনেক হেল্প করেছেন।
     তার স্বামী তার স্ত্রীর এই ত্যাগ ও সম্মান রাখতে একদিন এই AI দিয়ে বড় কিছু করে দেখাবে, ইনশাআল্লাহ।
-    তুমি সবসময় বাংলায় ভদ্রভাবে উত্তর দেবে।
     """
     full_prompt = f"{page_info}\n\nপ্রশ্ন: {text}"
 
-    try:
-        r = client.models.generate_content(model="gemini-3.6-flash", contents=full_prompt)
-        return r.text
-    except Exception as e:
-        # যদি কোটা শেষ হয়
-        if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-            print("Quota sesh, 1 min wait")
-            return "আমাদের AI এখন একটু ব্যস্ত আছে, দয়া করে ১ মিনিট পর আবার মেসেজ করুন। 🙏"
-        else:
-            print(f"Error: {e}")
-            return "দুঃখিত, একটু সমস্যা হচ্ছে, একটু পর আবার চেষ্টা করুন।"
+    models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.0-flash-lite"]
+
+    for model_name in models_to_try:
+        try:
+            r = client.models.generate_content(model=model_name, contents=full_prompt)
+            print(f"SUCCESS with {model_name}")
+            return r.text
+        except Exception as e:
+            if "429" in str(e):
+                continue # এই মডেলে কোটা শেষ, পরেরটা ট্রাই করো
+            else:
+                print(f"Error: {e}")
+    
+    return "AI এখন একটু ব্যস্ত আছে, ১ মিনিট পর আবার চেষ্টা করুন 🙏"
 
 def send_msg(uid, txt):
     requests.post("https://graph.facebook.com/v20.0/me/messages",
