@@ -1,6 +1,7 @@
 import os
 import requests
 from fastapi import FastAPI, Request
+from fastapi.responses import PlainTextResponse
 import google.generativeai as genai
 
 app = FastAPI()
@@ -19,37 +20,33 @@ async def verify(request: Request):
     challenge = request.query_params.get("hub.challenge")
     if mode == "subscribe" and challenge:
         if token != VERIFY_TOKEN:
-            return {"error": "Verification token mismatch"}
-        return int(challenge)
-    return {"message": "Hello world - FastAPI Bot is running"}
+            return PlainTextResponse("Verification token mismatch", status_code=403)
+        return PlainTextResponse(content=challenge)
+    return {"status": "Bot is running - FastAPI"}
 
 def get_gemini_response(user_message):
     try:
         response = model.generate_content(user_message)
-        return response.text
+        return response.text[:1900]
     except Exception as e:
-        print(f"Gemini Error: {e}")
-        return "দুঃখিত, আমি এখন উত্তর দিতে পারছি না।"
+        print(f"Error: {e}")
+        return "দুঃখিত, এখন উত্তর দিতে পারছি না।"
 
 def send_message(recipient_id, message_text):
+    url = "https://graph.facebook.com/v20.0/me/messages"
     params = {"access_token": PAGE_ACCESS_TOKEN}
-    data = {
-        "recipient": {"id": recipient_id},
-        "message": {"text": message_text}
-    }
-    r = requests.post("https://graph.facebook.com/v19.0/me/messages", params=params, json=data)
-    print(r.status_code, r.text)
+    payload = {"recipient": {"id": recipient_id}, "message": {"text": message_text}}
+    requests.post(url, params=params, json=payload)
 
 @app.post("/")
 async def webhook(request: Request):
     data = await request.json()
     if data.get("object") == "page":
         for entry in data.get("entry", []):
-            for messaging_event in entry.get("messaging", []):
-                if "message" in messaging_event:
-                    sender_id = messaging_event["sender"]["id"]
-                    message_text = messaging_event["message"].get("text")
-                    if message_text:
-                        ai_reply = get_gemini_response(message_text)
-                        send_message(sender_id, ai_reply)
+            for msg in entry.get("messaging", []):
+                if "message" in msg and msg["message"].get("text"):
+                    sender = msg["sender"]["id"]
+                    text = msg["message"]["text"]
+                    ai_reply = get_gemini_response(text)
+                    send_message(sender, ai_reply)
     return {"status": "ok"}
