@@ -14,40 +14,43 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 
 @app.get("/webhook")
 async def verify(request: Request):
-    if request.query_params.get("hub.mode") == "subscribe":
-        if request.query_params.get("hub.verify_token") == VERIFY_TOKEN:
-            return PlainTextResponse(content=request.query_params.get("hub.challenge"))
+    mode = request.query_params.get("hub.mode")
+    token = request.query_params.get("hub.verify_token")
+    challenge = request.query_params.get("hub.challenge")
+    if mode == "subscribe" and token == VERIFY_TOKEN:
+        return PlainTextResponse(content=challenge)
     return PlainTextResponse("Bot running")
 
 @app.get("/")
 async def root():
-    return {"status": "ok"}
+    return {"ok": True}
 
-def get_gemini_response(user_message):
-    try:
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=user_message
-        )
-        return response.text[:1900]
-    except Exception as e:
-        print(f"GEMINI ERROR: {e}")
-        return f"AI Error: {e}"
+def get_ai(text):
+    resp = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=text
+    )
+    return resp.text
 
-def send_message(recipient_id, text):
+def send_msg(user_id, text):
     url = "https://graph.facebook.com/v20.0/me/messages"
     params = {"access_token": PAGE_ACCESS_TOKEN}
-    payload = {"recipient": {"id": recipient_id}, "message": {"text": text}}
-    r = requests.post(url, params=params, json=payload)
-    print(f"FB Send: {r.status_code} {r.text}")
+    data = {"recipient": {"id": user_id}, "message": {"text": text[:1900]}}
+    requests.post(url, params=params, json=data)
 
 @app.post("/webhook")
 async def webhook(request: Request):
-    data = await request.json()
-    if data.get("object") == "page":
-        for entry in data.get("entry", []):
-            for ev in entry.get("messaging", []):
-                if "message" in ev and ev["message"].get("text"):
-                    get_gemini_response(ev["message"]["text"])
-                    send_message(ev["sender"]["id"], get_gemini_response(ev["message"]["text"]))
+    body = await request.json()
+    if body.get("object") == "page":
+        for entry in body.get("entry", []):
+            for event in entry.get("messaging", []):
+                if "message" in event and event["message"].get("text"):
+                    user_text = event["message"]["text"]
+                    sender = event["sender"]["id"]
+                    try:
+                        ai_text = get_ai(user_text)
+                    except Exception as e:
+                        print(f"GEMINI ERROR: {e}")
+                        ai_text = "AI একটু ব্যস্ত, ১ মিনিট পর আবার বলুন।"
+                    send_msg(sender, ai_text)
     return {"status": "ok"}
