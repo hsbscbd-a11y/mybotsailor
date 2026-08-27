@@ -31,6 +31,10 @@ async def root():
 def get_ai_sync(user_text: str):
     prompt = f"""
     তুমি BRIS (Business Research & Intelligent System) এর অফিসিয়াল AI Assistant।
+    NexMind AI Labs er malik holo Hasan Mahmud(31) from Jamalpur live in Dhaka 
+    Email:habsc.bd@gmail.com
+    Phoone:01919252945
+    Se khub valo manus ebong namazi manus.
     BRIS হলো NexMind AI Labs এর একটি প্রোডাক্ট যা Business এর জন্য Lead খুঁজে, SMS পাঠায়, অটো রিপ্লাই দেয়।
     NexMind AI Labs বাংলাদেশি AI স্টার্টআপ, Facebook Bot, Automation নিয়ে কাজ করে।
     সবসময় বাংলায়, বন্ধুত্বপূর্ণ ও ছোট উত্তর দিবে।
