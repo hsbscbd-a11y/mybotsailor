@@ -28,11 +28,11 @@ def get_ai_sync(user_text: str):
     prompt = f"{page_info}\nUser: {user_text}"
 
     # BRIS Auto-Model Selector - একটা Fail করলে আরেকটা চলবে
+    # BRIS Auto-Model Selector - Google এর নতুন মডেল অনুযায়ী
     MODELS_TO_TRY = [
-        "gemini-3.6-flash",
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
-        "gemini-1.5-flash",
+        "gemini-3.6-flash",          # Google এখন এটাই ব্যবহার করতে বলছে
+        "gemini-3.5-flash-lite",     # Lite ভার্সন
+        "gemini-2.5-flash",          # Backup
     ]
 
     last_error = None
